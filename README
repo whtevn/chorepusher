@@ -1,0 +1,16 @@
+
+I have a tendency to forget to do important things. Keeping lists
+has helped, but things that re-occur are both obnoxious to continually
+put on lists and generally important. Whether this is a reasonable
+solution to this problem is... questionable. However, it was an idea
+I had, and I was curious about appjet (and subsequently git) and 
+decided my day would be better served figuring those things out than
+actually finishing the chores that inspired the app in the first place.
+
+So here we are, two days later, and I have an app on hosted on appjet,
+source repo at github, and it.. yknow.. works. The display leaves something
+to be desired, and it doesn't actually prioritize your chores yet, but
+that is just a small amount of will away.
+
+You can, however, enter chores and the frequency with which they should
+happen. http://chorepusher.appjet.com. Checks it out.
