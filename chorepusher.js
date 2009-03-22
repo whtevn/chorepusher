@@ -95,6 +95,12 @@ var Chore =
         this.lastCompleted = new Date();
       },
 
+      nextDone: function()
+      {
+        var doneAt = this.lastCompleted.getTime() + this.frequency
+        return(new Date(doneAt));
+      },
+
       rank: function()
       {
         /* this method should create a ranking from 0.0 to 1.0
@@ -250,7 +256,8 @@ var Account =
   },
 }
 
-var setAccountSession = function(account) { session.account_id = account.id }
+function setAccountSession (account) { session.account_id = account.id }
+function niceDate(date){ return(""+(date.getMonth()+1)+"/"+(date.getDate())) }
 
 
 switch(request.path){
@@ -341,10 +348,10 @@ case "/add_chore":
           <td>
             <input type="text" name="frequency" id="chore_frequency" size="3" />
             <select name="frequency_duration" id="chore_frequency_duration">
-              <option value="86400">days</option>
-              <option value="604800">weeks</option>
-              <option value="2116800">months</option>
-              <option value="31449600">years</option>
+              <option value="86400000">days</option>
+              <option value="604800000">weeks</option>
+              <option value="2629743830">months</option>
+              <option value="31449600000">years</option>
             </select>
           </td>
         </tr>
@@ -373,15 +380,17 @@ case "/home":
       <th>Name</th>
       <th>Last Completed</th>
       <th>Needs to be done by</th>
-      <th>&nbsp</th>
+      <th>&nbsp;</th>
     </tr>
   """));
 
-  
-    Chore.orderList(Chore.findByEmail(account.email)).forEach(function(chore){
+    var chore; 
+    Chore.orderList(Chore.findByEmail(account.email)).forEach(function(item){
+      chore = Chore.initializeFromCollection(item);
       print(html("<tr>"));
-        print(html("<td>"+chore.name+"</td><td>"+chore.priority+"</td>"));
-        print(html("<td>"+chore.name+"</td><td>"+chore.priority+"</td>"));
+        print(html("<td>"+chore.name+"</td><td>"+niceDate(chore.lastCompleted)+"</td>"));
+        print(html("<td>"+niceDate(chore.nextDone())+"</td>"));
+        print(html("<td><a href=\"completed/"+chore.id+"\" title=\"mark "+chore.name+" as complete\">complete!</a></td>"));
       print(html("</tr>"));
     });
   print(html("</table>"));
