@@ -31,6 +31,7 @@ var Chore =
     thisChore = Chore.initialize(input.email, input.name, input.priority);
     thisChore.setLastCompleted(input.lastCompleted);
     thisChore.setFrequency(input.frequency);
+    thisChore.setId(input.id);
     return(thisChore);
   },
 
@@ -69,6 +70,11 @@ var Chore =
         this.email = new_email;
       },
 
+      setId: function(id)
+      {
+        this.id = id;
+      },
+
       setPriority: function(new_priority)
       {
         this.priority = new_priority;
@@ -98,12 +104,16 @@ var Chore =
         return(this.priority);
       },
 
-      asCollection: function(){
-        return({email: this.email, name: this.name, priority: this.priority, lastCompleted: this.lastCompleted, frequency: this.frequency});
+      asCollection: function(without_id){
+        if(! without_id){
+          return({id: this.id, email: this.email, name: this.name, priority: this.priority, lastCompleted: this.lastCompleted, frequency: this.frequency});
+        }else{
+          return({email: this.email, name: this.name, priority: this.priority, lastCompleted: this.lastCompleted, frequency: this.frequency});
+        }
       },
 
       saveAsNew: function() {
-        Chore.collection.add(this.asCollection())
+        Chore.collection.add(this.asCollection(true))
         return(this)
       },
     }
@@ -120,17 +130,23 @@ var Chore =
 
   compare: function(a, b)
   {
+    a = Chore.initializeFromCollection(a);
+    b = Chore.initializeFromCollection(b);
     if(a.rank() > b.rank()){
-      return(a);
+      return(-1);
     }else{
-      if(b.rank() > a.rank()){
-        return(b);            
+      if(a.rank() < b.rank()){
+        return(1);            
       }else{
-        return(true);
+        return(0);
       }
     }
   },
 
+  orderList: function(collection)
+  {
+    return(collection.sort(Chore.compare));
+  },
 }
 
 
@@ -195,7 +211,7 @@ var Account =
       },
 
       create: function() {
-        return(Account.collection.add(this.asCollection()));
+        return(Account.collection.add(this.asCollection(true)));
       },
 
       asCollection: function(){
@@ -347,17 +363,28 @@ case "/home":
   account = Account.initializeById(session.account_id)
 
   page.setTitle("Chores");
-  print(html("<h1> chores are not currently being organized</h1>"));
+  print(html("<h1> chores are currently being sorted only by priority</h1>"));
   print(html("<a href=\"/sign_out\">sign out</a>"));
   print(" | ");
   print(html("<a href=\"add_chore\">add a chore</a>"));
-  print(html("<ul>"));
-    Chore.findByEmail(account.email).forEach(function(chore){
-      print(html("<li>"));
-        print(chore.name);
-      print(html("</li>"));
+  print(html("""
+  <table>
+    <tr>
+      <th>Name</th>
+      <th>Last Completed</th>
+      <th>Needs to be done by</th>
+      <th>&nbsp</th>
+    </tr>
+  """));
+
+  
+    Chore.orderList(Chore.findByEmail(account.email)).forEach(function(chore){
+      print(html("<tr>"));
+        print(html("<td>"+chore.name+"</td><td>"+chore.priority+"</td>"));
+        print(html("<td>"+chore.name+"</td><td>"+chore.priority+"</td>"));
+      print(html("</tr>"));
     });
-  print(html("</ul>"));
+  print(html("</table>"));
   break;
 case "/sign_out":
   session.account_id = undefined
