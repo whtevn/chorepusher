@@ -57,8 +57,9 @@ var Chore =
       email: "",
       name: "",
       priority: 0.0,
-      lastCompleted: new Date(),
+      lastCompleted: "--",
       frequency: 0,
+      dateCreated: new Date(),
 
       setName: function(new_name)
       {
@@ -97,8 +98,10 @@ var Chore =
 
       nextDone: function()
       {
-        var doneAt = this.lastCompleted.getTime() + this.frequency
-        return(new Date(doneAt));
+        try { return(new Date(this.lastCompleted.getTime() + this.frequency)); }
+        catch(error){
+         return(new Date(this.dateCreated.getTime() + this.frequency)); 
+        }
       },
 
       rank: function()
@@ -112,9 +115,9 @@ var Chore =
 
       asCollection: function(without_id){
         if(! without_id){
-          return({id: this.id, email: this.email, name: this.name, priority: this.priority, lastCompleted: this.lastCompleted, frequency: this.frequency});
+          return({id: this.id, email: this.email, name: this.name, priority: this.priority, lastCompleted: this.lastCompleted, frequency: this.frequency, dateCreated: this.dateCreated});
         }else{
-          return({email: this.email, name: this.name, priority: this.priority, lastCompleted: this.lastCompleted, frequency: this.frequency});
+          return({email: this.email, name: this.name, priority: this.priority, lastCompleted: this.lastCompleted, frequency: this.frequency, dateCreated: this.dateCreated});
         }
       },
 
@@ -256,8 +259,16 @@ var Account =
   },
 }
 
+function assureSignedIn(){ if(! session.account_id){ response.redirect("/"); } }
 function setAccountSession (account) { session.account_id = account.id }
-function niceDate(date){ return(""+(date.getMonth()+1)+"/"+(date.getDate())) }
+function niceDate(date){
+  try { return(""+(date.getMonth()+1)+"/"+(date.getDate())) }
+  catch (error) {
+    return(date)
+  }
+}
+
+  
 
 
 switch(request.path){
@@ -366,11 +377,12 @@ case "/add_chore":
   """)); //"""
   break;
 case "/home":
-  if(! session.account_id){ response.redirect("/"); }
+  assureSignedIn();
   account = Account.initializeById(session.account_id)
 
   page.setTitle("Chores");
   print(html("<h1> chores are currently being sorted only by priority</h1>"));
+  print(html("<h1>Today is "+niceDate(new Date())+"</h1>"));
   print(html("<a href=\"/sign_out\">sign out</a>"));
   print(" | ");
   print(html("<a href=\"add_chore\">add a chore</a>"));
@@ -390,7 +402,7 @@ case "/home":
       print(html("<tr>"));
         print(html("<td>"+chore.name+"</td><td>"+niceDate(chore.lastCompleted)+"</td>"));
         print(html("<td>"+niceDate(chore.nextDone())+"</td>"));
-        print(html("<td><a href=\"completed/"+chore.id+"\" title=\"mark "+chore.name+" as complete\">complete!</a></td>"));
+        print(html("<td><a href=\"chore_completed/"+chore.id+"\" title=\"mark "+chore.name+" as complete\">complete!</a></td>"));
       print(html("</tr>"));
     });
   print(html("</table>"));
@@ -457,6 +469,27 @@ case "/signup":
     </form>
    """)); //"""
   break;
- 
+  default:
+    if(request.path.match("chore_completed")){
+      assureSignedIn();      
+      choreId = request.path.split("/")[2]
+      if(! choreId){ response.redirect("/home"); }
+      account = getStorable(session.account_id);
+      chore   = getStorable(choreId);
+
+      if(chore.email == account.email){
+        chore.lastCompleted = new Date();
+        response.redirect("/home");
+      }
+      else{ 
+        response.redirect("/sign_out");
+      }
+    }else{
+      if(request.path.match("edit_chore")){
+        assureSignedIn();
+        print("someday you will be able to edit a chore here.");
+      }else{ print(html("<h1>40flol</h1>")); print("wat u don heer lol"); }
+    }
+  break;
 }
 
