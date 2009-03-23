@@ -271,12 +271,13 @@ function niceDate(date){
 
 function assureSignedInOwnsChore(choreId){
   if(! choreId){ response.redirect("/home"); }
-  account = getStorable(session.account_id);
-  chore   = getStorable(choreId);
+  var account = getStorable(session.account_id);
+  var chore   = getStorable(choreId);
 
   if(chore.email != account.email){
     response.redirect("/sign_out");
   }
+  return(chore)
 }
 
 function writeSelected(a, name, b){
@@ -385,9 +386,8 @@ case "/":
    }
    page.setTitle("Sign Up or Sign In");
    print(html("<h1>Welcome. Make an account and add your chores.</h1>"));
-   print(html("<p>They aren't being organized yet, but they are stored and shown.</p>"));
-   print(html("<p>Hopefully I won't wipe out the whole database by accident.</p>"));
-   print(html("<p>Passwords are not stored in plaintext and they cannot currently be changed.</p>"));
+   print(html("<p>They aren't being organized yet (beyond by priority), but they are stored and shown, and can even be edited.</p>"));
+   print(html("<p>Passwords are not stored in plaintext and cannot currently be changed.</p>"));
    print(html("""
     <h3>Sign In</h3>
     <form action="/" method="post">
@@ -450,6 +450,7 @@ case "/home":
       <th>Last Completed</th>
       <th>Needs to be done by</th>
       <th>&nbsp;</th>
+      <th>&nbsp;</th>
     </tr>
   """));
 
@@ -459,7 +460,12 @@ case "/home":
       print(html("<tr>"));
         print(html("<td><a href=\"edit_chore/"+chore.id+"\">"+chore.name+"</a></td><td>"+niceDate(chore.lastCompleted)+"</td>"));
         print(html("<td>"+niceDate(chore.nextDone())+"</td>"));
-        print(html("<td><a href=\"chore_completed/"+chore.id+"\" title=\"mark "+chore.name+" as complete\">complete!</a></td>"));
+        print(html("<td>"));
+          print(html("<a href=\"chore_completed/"+chore.id+"\" title=\"mark "+chore.name+" as complete\">complete!</a>"));
+        print(html("</td>"));
+        print(html("<td>"));
+          //print("["+html("<a href=\"deleterer_chore/"+chore.id+"\" title=\"delete "+chore.name+" forever\" onClick=\"confirm(\"are you sure you want to delete this?\");\">X</a>")+"]");
+        print(html("</td>"));
       print(html("</tr>"));
     });
   print(html("</table>"));
@@ -495,6 +501,29 @@ case "/signup":
    page.setTitle("Sign Up");
    print(html("""
     <h3>Sign Up</h3>
+    <p>Passwords are not stored in plaintext and cannot currently be changed.</p>
+    <h3>Sign In</h3>
+    <form action="/" method="post">
+      <table>
+        <tr>
+          <td><label for="email">Email:</label></td>
+          <td><input type="text" name="email" 
+    """));
+    if(request.params.email != undefined){ print("value=\""+request.params.email+"\""); }
+    print(html("""
+        id="account_email" /></td>
+        </tr>
+        <tr>
+          <td><label for="password">password:</label></td>
+          <td><input type="password" name="password" id="account_password" /></td>
+        </tr>
+        <tr>
+          <td>
+          &nbsp;
+           </td>
+           <td>
+            <input type="submit" value="sign in">
+            <a href="/
     <form action="signup" method="post">
       <table>
         <tr>
@@ -529,14 +558,14 @@ case "/signup":
   default:
     if(request.path.match("chore_completed")){
       assureSignedIn();      
-      choreId = request.path.split("/")[2]
-      assureSignedInOwnsChore(choreId)
+      var choreId = request.path.split("/")[2];
+      assureSignedInOwnsChore(choreId);
       chore.lastCompleted = new Date();
       response.redirect("/home");
-  }else{ 
+    }else{ 
     if(request.path.match("edit_chore")){
       assureSignedIn();
-      choreId = request.path.split("/")[2]
+      var choreId = request.path.split("/")[2];
       assureSignedInOwnsChore(choreId)
       if(request.params.name &&
          request.params.priority &&
@@ -551,7 +580,15 @@ case "/signup":
         response.redirect("/home");
       }
       choreForm("edit", getStorable(choreId));
+    }else{
+    if(request.path.match("delete_chore")){
+      assureSignedIn();
+      var choreId = request.path.split("/")[2];
+      var chore = assureSignedInOwnsChore(choreId);
+      Chore.collection.remove(getStorable(choreId));
+      response.redirect("/home");
     }else{ print(html("<h1>40flol</h1>")); print("wat u don heer lol"); }
+  }
   }
   break;
 }
