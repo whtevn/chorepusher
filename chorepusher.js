@@ -9,6 +9,7 @@ if(! storage.accounts){ storage.accounts = new StorableCollection(); }
 
 // these lines are dangerous and will kill me at least once.
 /*
+// kill count: 1
 storage.accounts.remove({});
 storage.chores.remove({});
 */
@@ -268,6 +269,101 @@ function niceDate(date){
   }
 }
 
+function assureSignedInOwnsChore(choreId){
+  if(! choreId){ response.redirect("/home"); }
+  account = getStorable(session.account_id);
+  chore   = getStorable(choreId);
+
+  if(chore.email != account.email){
+    response.redirect("/sign_out");
+  }
+}
+
+function writeSelected(a, name, b){
+  print(html("<option value=\""+a+"\""));
+  if(b && a==b){print(" selected=\"selected\"")}
+  print(html(">"));
+  print(name);
+  print(html("</option>"));
+}
+
+function choreForm(name, args){
+    var day   = 86400000;
+    var week  = 604800000;
+    var month = 2629743830;
+    var year  = 31449600000;
+    var repeatTimes = ''
+    var foundUnit = day
+  if(! args){
+    args = {};
+    formName = "/add_chore";
+  }else{
+    foundUnit = false;
+    if(args.frequency > year){
+      if(args.frequency % year == 0){repeatTimes = args.frequency/year; foundUnit=year }
+    }
+    if(args.frequency > month && foundUnit == false){
+      if(args.frequency % month == 0){repeatTimes = args.frequency/month; foundUnit=month }
+    }
+    if(args.frequency > week && foundUnit == false){
+      if(args.frequency % week == 0){repeatTimes = args.frequency/week; foundUnit=week }
+    }
+    if(foundUnit == false){
+      repeatTimes = args.frequency/day;
+      foundUnit = 'days';
+    }
+    formName = "/edit_chore/"+args.id;
+  }
+  print(html("<form action=\""+formName+"\" method=\"post\">"));
+  print(html("""
+      <table>
+        <tr>
+          <td><label for="name">name</label</td>
+          <td><input type="text" name="name" id="chore_name"
+      """));
+      if(args.name){ print("value=\""+args.name+"\"")}
+      print(html("""
+      /></td>
+        </tr>
+        <tr>
+          <td><label for="priority">priority</label</td>
+          <td>
+            <select name="priority" id="chore_priority">"""));
+              writeSelected(0.1, "minimal", args.priority);
+              writeSelected(0.25, "light", args.priority);
+              writeSelected(0.5, "medium", args.priority);
+              writeSelected(0.75, "heavy", args.priority);
+              writeSelected(1.0, "critical", args.priority);
+              print(html("""
+            </select>
+          </td>
+        </tr>
+        <tr>
+          <td><label for="frequency">frequency</label</td>
+          <td>
+           """));
+           print(html("<input type=\"text\" name=\"frequency\" id=\"chore_frequency\" size=\"3\" value=\""+repeatTimes+"\" />"));
+           print(html("<select name=\"frequency_duration\" id=\"chore_frequency_duration\">"));
+              writeSelected(day, "days", foundUnit);
+              writeSelected(week, "weeks", foundUnit);
+              writeSelected(month, "months", foundUnit);
+              writeSelected(year, "years", foundUnit);
+            print(html("""
+            </select>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2">"""));
+          print(html("<input type=\"submit\" value=\""+name+" chore\" />"));
+          print(html("""
+            <a href="/home" title="cancel">cancel</a>
+          </td>
+        </tr>
+      </table>
+    </form>
+  """)); //"""
+}
+
   
 
 
@@ -334,47 +430,8 @@ case "/add_chore":
     chore.saveAsNew();
     response.redirect("/home");
   }
-  print(html("""
-    <h3>Add a Chore</h3>
-    <form action="/add_chore" method="post">
-      <table>
-        <tr>
-          <td><label for="name">name</label</td>
-          <td><input type="text" name="name" id="chore_name" /></td>
-        </tr>
-        <tr>
-          <td><label for="priority">priority</label</td>
-          <td>
-            <select name="priority" id="chore_priority">
-              <option value="0.1">minimal</option>
-              <option value="0.25">light</option>
-              <option value="0.5">medium</option>
-              <option value="0.75">heavy</option>
-              <option value="1.0">critical</option>
-            </select>
-          </td>
-        </tr>
-        <tr>
-          <td><label for="frequency">frequency</label</td>
-          <td>
-            <input type="text" name="frequency" id="chore_frequency" size="3" />
-            <select name="frequency_duration" id="chore_frequency_duration">
-              <option value="86400000">days</option>
-              <option value="604800000">weeks</option>
-              <option value="2629743830">months</option>
-              <option value="31449600000">years</option>
-            </select>
-          </td>
-        </tr>
-        <tr>
-          <td colspan="2">
-            <input type="submit" value="add chore" />
-            <a href="/home" title="cancel">cancel</a>
-          </td>
-        </tr>
-      </table>
-    </form>
-  """)); //"""
+    print(html("<h3>Add a Chore</h3>"));
+    choreForm("add");
   break;
 case "/home":
   assureSignedIn();
@@ -400,7 +457,7 @@ case "/home":
     Chore.orderList(Chore.findByEmail(account.email)).forEach(function(item){
       chore = Chore.initializeFromCollection(item);
       print(html("<tr>"));
-        print(html("<td>"+chore.name+"</td><td>"+niceDate(chore.lastCompleted)+"</td>"));
+        print(html("<td><a href=\"edit_chore/"+chore.id+"\">"+chore.name+"</a></td><td>"+niceDate(chore.lastCompleted)+"</td>"));
         print(html("<td>"+niceDate(chore.nextDone())+"</td>"));
         print(html("<td><a href=\"chore_completed/"+chore.id+"\" title=\"mark "+chore.name+" as complete\">complete!</a></td>"));
       print(html("</tr>"));
@@ -473,23 +530,29 @@ case "/signup":
     if(request.path.match("chore_completed")){
       assureSignedIn();      
       choreId = request.path.split("/")[2]
-      if(! choreId){ response.redirect("/home"); }
-      account = getStorable(session.account_id);
-      chore   = getStorable(choreId);
-
-      if(chore.email == account.email){
-        chore.lastCompleted = new Date();
+      assureSignedInOwnsChore(choreId)
+      chore.lastCompleted = new Date();
+      response.redirect("/home");
+  }else{ 
+    if(request.path.match("edit_chore")){
+      assureSignedIn();
+      choreId = request.path.split("/")[2]
+      assureSignedInOwnsChore(choreId)
+      if(request.params.name &&
+         request.params.priority &&
+         request.params.frequency &&
+         request.params.frequency_duration)
+      {
+        var chore     = getStorable(choreId);
+        var frequency = ((request.params.frequency*1)*(request.params.frequency_duration*1));
+        chore.frequency = frequency;
+        chore.name = request.params.name;
+        chore.priority = request.params.priority;
         response.redirect("/home");
       }
-      else{ 
-        response.redirect("/sign_out");
-      }
-    }else{
-      if(request.path.match("edit_chore")){
-        assureSignedIn();
-        print("someday you will be able to edit a chore here.");
-      }else{ print(html("<h1>40flol</h1>")); print("wat u don heer lol"); }
-    }
+      choreForm("edit", getStorable(choreId));
+    }else{ print(html("<h1>40flol</h1>")); print("wat u don heer lol"); }
+  }
   break;
 }
 
