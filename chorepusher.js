@@ -560,6 +560,7 @@ case "/signup":
       assureSignedIn();      
       var choreId = request.path.split("/")[2];
       assureSignedInOwnsChore(choreId);
+      var chore  = getStorable(choreId);
       chore.lastCompleted = new Date();
       response.redirect("/home");
     }else{ 
